@@ -1,5 +1,6 @@
+<!-- templates/api/tabs/supplies_tab.html -->
 <div class="p-3">
-    <!-- Фильтры -->
+    <!-- Фильтры (упрощённые без статусов) -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -21,13 +22,13 @@
                         </div>
                         
                         <div class="col-md-3">
-                            <label class="form-label">Статус поставки</label>
-                            <select class="form-select form-select-sm" name="status">
-                                <option value="">Все статусы</option>
-                                {% for value, label in filter.form.fields.status.choices %}
-                                <option value="{{ value }}" 
-                                        {% if filter.form.status.value == value %}selected{% endif %}>
-                                    {{ label }}
+                            <label class="form-label">Поставщик</label>
+                            <select class="form-select form-select-sm" name="supplier">
+                                <option value="">Все поставщики</option>
+                                {% for supplier in suppliers %}
+                                <option value="{{ supplier.supplier_id }}" 
+                                        {% if filter.form.supplier.value == supplier.supplier_id|stringformat:"s" %}selected{% endif %}>
+                                    {{ supplier.name }}
                                 </option>
                                 {% endfor %}
                             </select>
@@ -50,19 +51,12 @@
                         </div>
                         
                         <div class="col-md-3">
-                            <label class="form-label">Дата поставки (от)</label>
-                            <input type="date" 
+                            <label class="form-label">Название товара</label>
+                            <input type="text" 
                                    class="form-control form-control-sm" 
-                                   name="delivery_date_from"
-                                   value="{{ filter.form.delivery_date_from.value|default:'' }}">
-                        </div>
-                        
-                        <div class="col-md-3">
-                            <label class="form-label">Дата поставки (до)</label>
-                            <input type="date" 
-                                   class="form-control form-control-sm" 
-                                   name="delivery_date_to"
-                                   value="{{ filter.form.delivery_date_to.value|default:'' }}">
+                                   name="product_name"
+                                   value="{{ filter.form.product_name.value|default:'' }}"
+                                   placeholder="Поиск по товару">
                         </div>
                         
                         <div class="col-md-12">
@@ -70,7 +64,7 @@
                                 <button type="submit" class="btn btn-primary btn-sm">
                                     <i class="bi bi-filter"></i> Применить фильтры
                                 </button>
-                                <a href="?sort={{ sort_by }}&order={{ order }}" class="btn btn-outline-secondary btn-sm">
+                                <a href="?tab=supplies" class="btn btn-outline-secondary btn-sm">
                                     <i class="bi bi-x-circle"></i> Сбросить
                                 </a>
                             </div>
@@ -88,11 +82,6 @@
                 <i class="bi bi-truck"></i> Поставки
                 <span class="badge bg-primary rounded-pill">{{ supplies|length }}</span>
             </h5>
-            <div class="btn-group">
-                <button class="btn btn-sm btn-outline-primary export-btn" data-type="supplies">
-                    <i class="bi bi-download"></i> Экспорт
-                </button>
-            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
@@ -102,30 +91,46 @@
                             <th width="10%" class="sortable-header {% if sort_by == 'order_id' %}sorted{% endif %}" 
                                 data-sort="order_id">
                                 № поставки
-                                {% include 'api/includes/sorting_icon.html' with field='order_id' %}
+                                {% if sort_by == 'order_id' %}
+                                    {% if order == 'asc' %}
+                                        <i class="bi bi-sort-down"></i>
+                                    {% else %}
+                                        <i class="bi bi-sort-up"></i>
+                                    {% endif %}
+                                {% else %}
+                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                {% endif %}
                             </th>
                             <th width="15%" class="sortable-header {% if sort_by == 'order_date' %}sorted{% endif %}" 
                                 data-sort="order_date">
                                 Дата заказа
-                                {% include 'api/includes/sorting_icon.html' with field='order_date' %}
+                                {% if sort_by == 'order_date' %}
+                                    {% if order == 'asc' %}
+                                        <i class="bi bi-sort-down"></i>
+                                    {% else %}
+                                        <i class="bi bi-sort-up"></i>
+                                    {% endif %}
+                                {% else %}
+                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                {% endif %}
                             </th>
-                            <th width="15%" class="sortable-header {% if sort_by == 'expected_delivery_date' %}sorted{% endif %}" 
-                                data-sort="expected_delivery_date">
-                                Дата поставки
-                                {% include 'api/includes/sorting_icon.html' with field='expected_delivery_date' %}
-                            </th>
-                            <th width="15%" class="sortable-header {% if sort_by == 'status' %}sorted{% endif %}" 
-                                data-sort="status">
-                                Статус
-                                {% include 'api/includes/sorting_icon.html' with field='status' %}
-                            </th>
+                            <th width="15%">Дата поставки</th>
+                            <th width="25%">Поставщик</th>
                             <th width="25%">Товары</th>
-                            <th width="10%" class="sortable-header {% if sort_by == 'total_price' %}sorted{% endif %}" 
+                            <th width="15%" class="sortable-header {% if sort_by == 'total_price' %}sorted{% endif %}" 
                                 data-sort="total_price">
                                 Общая сумма
-                                {% include 'api/includes/sorting_icon.html' with field='total_price' %}
+                                {% if sort_by == 'total_price' %}
+                                    {% if order == 'asc' %}
+                                        <i class="bi bi-sort-down"></i>
+                                    {% else %}
+                                        <i class="bi bi-sort-up"></i>
+                                    {% endif %}
+                                {% else %}
+                                    <i class="bi bi-arrow-down-up text-muted"></i>
+                                {% endif %}
                             </th>
-                            <th width="10%" class="text-center">Действия</th>
+                            <th width="10%" class="text-center">Детали</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -142,21 +147,18 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="badge {% if supply.status == 'delivered' %}bg-success
-                                                     {% elif supply.status == 'in_transit' %}bg-warning
-                                                     {% elif supply.status == 'ordered' %}bg-info
-                                                     {% else %}bg-danger{% endif %}">
-                                    {{ supply.get_status_display }}
-                                </span>
+                                <small>{{ supply.supplier.name }}</small>
                             </td>
                             <td>
                                 <small>
-                                    {% for item in supply.purchaseorderitem_set.all|slice:":2" %}
+                                    {% with items=supply.purchaseorderitem_set.all|slice:":2" %}
+                                    {% for item in items %}
                                     • {{ item.product.name }} ({{ item.quantity }} {{ item.product.unit }})<br>
                                     {% endfor %}
                                     {% if supply.purchaseorderitem_set.count > 2 %}
                                     <span class="text-muted">+{{ supply.purchaseorderitem_set.count|add:"-2" }} товаров</span>
                                     {% endif %}
+                                    {% endwith %}
                                 </small>
                             </td>
                             <td>
@@ -167,16 +169,18 @@
                             <td class="text-center">
                                 <button class="btn btn-sm btn-outline-info view-details-btn" 
                                         data-bs-toggle="collapse" 
-                                        data-bs-target="#details-{{ supply.order_id }}">
+                                        data-bs-target="#details-{{ supply.order_id }}"
+                                        aria-expanded="false"
+                                        aria-controls="details-{{ supply.order_id }}">
                                     <i class="bi bi-chevron-down"></i>
                                 </button>
                             </td>
                         </tr>
                         <!-- Детали поставки -->
-                        <tr class="collapse" id="details-{{ supply.order_id }}">
-                            <td colspan="7" class="bg-light">
+                        <tr class="collapse details-row" id="details-{{ supply.order_id }}">
+                            <td colspan="7" class="bg-light p-0">
                                 <div class="p-3">
-                                    <h6><i class="bi bi-box-seam"></i> Товары в поставке #{{ supply.order_id }}</h6>
+                                    <h6><i class="bi bi-box-seam"></i> Детали поставки #{{ supply.order_id }}</h6>
                                     <div class="table-responsive">
                                         <table class="table table-sm">
                                             <thead>
@@ -205,11 +209,24 @@
                                             </tfoot>
                                         </table>
                                     </div>
-                                    <div class="mt-2">
-                                        <small class="text-muted">
-                                            <i class="bi bi-info-circle"></i>
-                                            Поставщик: {{ supply.supplier.name }}
-                                        </small>
+                                    <div class="row mt-2">
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <i class="bi bi-info-circle"></i>
+                                                <strong>Поставщик:</strong> {{ supply.supplier.name }}<br>
+                                                <strong>Телефон:</strong> {{ supply.supplier.phone }}<br>
+                                                <strong>Email:</strong> {{ supply.supplier.email }}
+                                            </small>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <small class="text-muted">
+                                                <strong>Дата заказа:</strong> {{ supply.order_date|date:"d.m.Y" }}<br>
+                                                <strong>Ожидаемая поставка:</strong> {{ supply.expected_delivery_date|date:"d.m.Y" }}<br>
+                                                {% if supply.actual_delivery_date %}
+                                                <strong>Фактическая поставка:</strong> {{ supply.actual_delivery_date|date:"d.m.Y" }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -219,9 +236,11 @@
                             <td colspan="7" class="text-center py-4">
                                 <i class="bi bi-truck display-6 text-muted"></i>
                                 <p class="mt-2">Нет данных о поставках</p>
-                                <a href="?" class="btn btn-sm btn-outline-primary">
+                                {% if filter.form.order_id.value or filter.form.supplier.value %}
+                                <a href="?tab=supplies" class="btn btn-sm btn-outline-primary">
                                     <i class="bi bi-x-circle"></i> Сбросить фильтры
                                 </a>
+                                {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -261,18 +280,40 @@ function initSuppliesComponents() {
     document.querySelectorAll('.view-details-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const icon = this.querySelector('i');
+            const targetId = this.getAttribute('data-bs-target');
+            const detailsRow = document.querySelector(targetId);
+            
+            // Переключаем иконку
             if (icon.classList.contains('bi-chevron-down')) {
                 icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
             } else {
                 icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
             }
+            
+            // Прокручиваем к деталям если открываем
+            if (!detailsRow.classList.contains('show')) {
+                setTimeout(() => {
+                    detailsRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }, 300);
+            }
         });
     });
     
-    // Экспорт данных
-    document.querySelector('.export-btn').addEventListener('click', function() {
-        // Реализация экспорта (можно сделать через AJAX)
-        alert('Экспорт данных в разработке...');
-    });
+    // Автоматическое открытие деталей если в URL есть параметр
+    const urlParams = new URLSearchParams(window.location.search);
+    const expandSupply = urlParams.get('expand_supply');
+    if (expandSupply) {
+        const detailsBtn = document.querySelector(`button[data-bs-target="#details-${expandSupply}"]`);
+        if (detailsBtn) {
+            setTimeout(() => {
+                detailsBtn.click();
+            }, 500);
+        }
+    }
+}
+
+// Инициализация при загрузке вкладки
+if (document.getElementById('supplies')) {
+    initSuppliesComponents();
 }
 </script>

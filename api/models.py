@@ -1,10 +1,10 @@
+# api/models.py
 from django.db import models
 from django.core.validators import MinValueValidator
-from django.db.models import Sum, F
 from decimal import Decimal
+from django.db.models import Sum, F
 
 class Supplier(models.Model):
-    """Поставщики"""
     supplier_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255, verbose_name="Название")
     phone = models.CharField(max_length=20, verbose_name="Телефон")
@@ -16,7 +16,6 @@ class Supplier(models.Model):
         return self.name
 
 class Category(models.Model):
-    """Категория товаров"""
     category_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100, verbose_name="Название категории")
     
@@ -24,7 +23,6 @@ class Category(models.Model):
         return self.name
 
 class Product(models.Model):
-    """Продукт"""
     product_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255, verbose_name="Название продукта")
     description = models.TextField(verbose_name="Описание", blank=True)
@@ -36,35 +34,50 @@ class Product(models.Model):
         return f"{self.name} ({self.sku})"
     
     def get_warehouse_quantity(self, retail_outlet_id):
-        """Расчет количества на складе для конкретной торговой точки"""
-        from django.db.models import Sum  # Или импорт здесь
-        
-        # Исправлено: Sum('quantity'), а не sum('quantity')
+        """Расчет количества на складе для конкретной торговой точки - БЕЗ СТАТУСОВ"""
+        # Все поставки независимо от статуса
         total_supplied = PurchaseOrderItem.objects.filter(
             product=self,
-            order__retail_outlet_id=retail_outlet_id,
-            order__status='delivered'
+            order__retail_outlet_id=retail_outlet_id
         ).aggregate(total=Sum('quantity'))['total'] or 0
         
+        # Все продажи независимо от статуса
         total_sold = SalesOrderItem.objects.filter(
             product=self,
-            order__retail_outlet_id=retail_outlet_id,
-            order__status='completed'
+            order__retail_outlet_id=retail_outlet_id
         ).aggregate(total=Sum('quantity'))['total'] or 0
         
         return total_supplied - total_sold
+    
+    def get_warehouse_quantity_by_outlet(self, retail_outlet):
+        """Альтернативный метод с объектом вместо ID"""
+        return self.get_warehouse_quantity(retail_outlet.retail_outlet_id)
 
 class RetailOutlet(models.Model):
-    """Торговая точка"""
     retail_outlet_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255, verbose_name="Название")
     address = models.TextField(verbose_name="Адрес")
     
     def __str__(self):
         return self.name
+    
+    def get_warehouse_summary(self):
+        """Сводка по складу для этой торговой точки"""
+        products = Product.objects.all()
+        summary = []
+        total_value = 0
+        
+        for product in products:
+            quantity = product.get_warehouse_quantity(self.retail_outlet_id)
+            if quantity != 0:  # Показываем только товары с ненулевым остатком
+                summary.append({
+                    'product': product,
+                    'quantity': quantity
+                })
+        
+        return summary
 
 class Customer(models.Model):
-    """Покупатель"""
     CUSTOMER_TYPES = [
         ('individual', 'Физическое лицо'),
         ('legal', 'Юридическое лицо'),
@@ -81,7 +94,6 @@ class Customer(models.Model):
         return self.full_name
 
 class Employee(models.Model):
-    """Сотрудник"""
     employee_id = models.AutoField(primary_key=True)
     retail_outlet = models.ForeignKey(RetailOutlet, on_delete=models.CASCADE, verbose_name="Торговая точка")
     full_name = models.CharField(max_length=255, verbose_name="ФИО")
@@ -93,21 +105,13 @@ class Employee(models.Model):
         return self.full_name
 
 class PurchaseOrder(models.Model):
-    """Заказ на поставку"""
-    ORDER_STATUSES = [
-        ('ordered', 'Заказан'),
-        ('in_transit', 'В пути'),
-        ('delivered', 'Доставлен'),
-        ('cancelled', 'Отменен'),
-    ]
-    
+    """Заказ на поставку - БЕЗ СТАТУСОВ"""
     order_id = models.AutoField(primary_key=True)
     supplier = models.ForeignKey(Supplier, on_delete=models.CASCADE, verbose_name="Поставщик")
     retail_outlet = models.ForeignKey(RetailOutlet, on_delete=models.CASCADE, verbose_name="Торговая точка")
     order_date = models.DateField(verbose_name="Дата заказа")
     expected_delivery_date = models.DateField(verbose_name="Ожидаемая дата поставки")
     actual_delivery_date = models.DateField(verbose_name="Фактическая дата поставки", null=True, blank=True)
-    status = models.CharField(max_length=20, choices=ORDER_STATUSES, verbose_name="Статус поставки")
     
     def __str__(self):
         return f"Поставка #{self.order_id}"
@@ -115,12 +119,21 @@ class PurchaseOrder(models.Model):
     def get_total_price(self):
         """Общая стоимость поставки"""
         total = self.purchaseorderitem_set.aggregate(
-            total=models.sum(models.F('purchase_price') * models.F('quantity'))
+            total=Sum(F('purchase_price') * F('quantity'))
         )['total'] or Decimal('0')
         return total
+    
+    def get_items_count(self):
+        """Количество позиций в поставке"""
+        return self.purchaseorderitem_set.count()
+    
+    def get_total_quantity(self):
+        """Общее количество товаров в поставке"""
+        return self.purchaseorderitem_set.aggregate(
+            total=Sum('quantity')
+        )['total'] or 0
 
 class PurchaseOrderItem(models.Model):
-    """Товары в заказе на поставку"""
     purchase_order_items_id = models.AutoField(primary_key=True)
     order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name="Товар")
@@ -134,22 +147,12 @@ class PurchaseOrderItem(models.Model):
         return self.purchase_price * self.quantity
 
 class SalesOrder(models.Model):
-    """Заказ на продажу"""
-    ORDER_STATUSES = [
-        ('pending', 'В обработке'),
-        ('confirmed', 'Подтвержден'),
-        ('in_delivery', 'В доставке'),
-        ('completed', 'Завершен'),
-        ('cancelled', 'Отменен'),
-    ]
-    
+    """Заказ на продажу - БЕЗ СТАТУСОВ"""
     order_id = models.AutoField(primary_key=True)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name="Покупатель")
     retail_outlet = models.ForeignKey(RetailOutlet, on_delete=models.CASCADE, verbose_name="Торговая точка")
     employee = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Сотрудник")
     order_date = models.DateField(verbose_name="Дата заказа")
-    delivery_date = models.DateField(verbose_name="Дата доставки", null=True, blank=True)
-    status = models.CharField(max_length=20, choices=ORDER_STATUSES, verbose_name="Статус заказа")
     discount = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name="Персональная скидка (%)")
     
     def __str__(self):
@@ -165,9 +168,23 @@ class SalesOrder(models.Model):
     def get_total_without_discount(self):
         """Общая стоимость заказа без скидки"""
         return sum(item.get_total() for item in self.salesorderitem_set.all())
+    
+    def get_discount_amount(self):
+        """Сумма скидки"""
+        total_without = self.get_total_without_discount()
+        return total_without * (self.discount / 100) if self.discount else Decimal('0')
+    
+    def get_items_count(self):
+        """Количество позиций в заказе"""
+        return self.salesorderitem_set.count()
+    
+    def get_total_quantity(self):
+        """Общее количество товаров в заказе"""
+        return self.salesorderitem_set.aggregate(
+            total=Sum('quantity')
+        )['total'] or 0
 
 class SalesOrderItem(models.Model):
-    """Товары в заказе на продажу"""
     order = models.ForeignKey(SalesOrder, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name="Товар")
     selling_price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена за единицу")
