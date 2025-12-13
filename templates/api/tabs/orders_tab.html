@@ -1,0 +1,274 @@
+<div class="p-3">
+    <!-- Фильтры -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-funnel"></i> Фильтры</h6>
+                </div>
+                <div class="card-body">
+                    <form method="get" id="order-filter-form" class="row g-3">
+                        <input type="hidden" name="sort" value="{{ sort_by }}">
+                        <input type="hidden" name="order" value="{{ order }}">
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Номер заказа</label>
+                            <input type="text" 
+                                   class="form-control form-control-sm" 
+                                   name="order_id" 
+                                   value="{{ filter.form.order_id.value|default:'' }}"
+                                   placeholder="Введите номер">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Статус заказа</label>
+                            <select class="form-select form-select-sm" name="status">
+                                <option value="">Все статусы</option>
+                                {% for value, label in filter.form.fields.status.choices %}
+                                <option value="{{ value }}" 
+                                        {% if filter.form.status.value == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Дата заказа (от)</label>
+                            <input type="date" 
+                                   class="form-control form-control-sm" 
+                                   name="order_date_from"
+                                   value="{{ filter.form.order_date_from.value|default:'' }}">
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <label class="form-label">Дата заказа (до)</label>
+                            <input type="date" 
+                                   class="form-control form-control-sm" 
+                                   name="order_date_to"
+                                   value="{{ filter.form.order_date_to.value|default:'' }}">
+                        </div>
+                        
+                        <div class="col-md-12">
+                            <div class="btn-group">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-filter"></i> Применить фильтры
+                                </button>
+                                <a href="?sort={{ sort_by }}&order={{ order }}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-x-circle"></i> Сбросить
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица заказов -->
+    <div class="card">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-cart"></i> Заказы
+                <span class="badge bg-primary rounded-pill">{{ orders|length }}</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="10%" class="sortable-header {% if sort_by == 'order_id' %}sorted{% endif %}" 
+                                data-sort="order_id">
+                                № заказа
+                                {% include 'api/includes/sorting_icon.html' with field='order_id' %}
+                            </th>
+                            <th width="15%" class="sortable-header {% if sort_by == 'order_date' %}sorted{% endif %}" 
+                                data-sort="order_date">
+                                Дата заказа
+                                {% include 'api/includes/sorting_icon.html' with field='order_date' %}
+                            </th>
+                            <th width="15%" class="sortable-header {% if sort_by == 'status' %}sorted{% endif %}" 
+                                data-sort="status">
+                                Статус доставки
+                                {% include 'api/includes/sorting_icon.html' with field='status' %}
+                            </th>
+                            <th width="10%">Персональная скидка</th>
+                            <th width="25%">Товары</th>
+                            <th width="15%" class="sortable-header {% if sort_by == 'total_price' %}sorted{% endif %}" 
+                                data-sort="total_price">
+                                Общая сумма
+                                {% include 'api/includes/sorting_icon.html' with field='total_price' %}
+                            </th>
+                            <th width="10%" class="text-center">Детали</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                        <tr class="order-row" data-order-id="{{ order.order_id }}">
+                            <td>
+                                <strong>#{{ order.order_id }}</strong>
+                            </td>
+                            <td>{{ order.order_date|date:"d.m.Y" }}</td>
+                            <td>
+                                <span class="badge {% if order.status == 'completed' %}bg-success
+                                                     {% elif order.status == 'in_delivery' %}bg-warning
+                                                     {% elif order.status == 'confirmed' %}bg-info
+                                                     {% elif order.status == 'pending' %}bg-secondary
+                                                     {% else %}bg-danger{% endif %}">
+                                    {{ order.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if order.discount %}
+                                <span class="badge bg-success">{{ order.discount }}%</span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small>
+                                    {% for item in order.salesorderitem_set.all|slice:":2" %}
+                                    • {{ item.product.name }} ({{ item.quantity }} {{ item.product.unit }})<br>
+                                    {% endfor %}
+                                    {% if order.salesorderitem_set.count > 2 %}
+                                    <span class="text-muted">+{{ order.salesorderitem_set.count|add:"-2" }} товаров</span>
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                <strong class="text-primary">
+                                    {{ order.get_total_price|floatformat:2 }} ₽
+                                </strong>
+                                {% if order.discount %}
+                                <br>
+                                <small class="text-muted">
+                                    <s>{{ order.get_total_without_discount|floatformat:2 }} ₽</s>
+                                </small>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-info view-details-btn" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#details-{{ order.order_id }}">
+                                    <i class="bi bi-chevron-down"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        <!-- Детали заказа -->
+                        <tr class="collapse" id="details-{{ order.order_id }}">
+                            <td colspan="7" class="bg-light">
+                                <div class="p-3">
+                                    <h6><i class="bi bi-box-seam"></i> Товары в заказе #{{ order.order_id }}</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Товар</th>
+                                                    <th>Количество</th>
+                                                    <th>Цена за ед.</th>
+                                                    <th>Сумма</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for item in order.salesorderitem_set.all %}
+                                                <tr>
+                                                    <td>{{ item.product.name }}</td>
+                                                    <td>{{ item.quantity }} {{ item.product.unit }}</td>
+                                                    <td>{{ item.selling_price|floatformat:2 }} ₽</td>
+                                                    <td>{{ item.get_total|floatformat:2 }} ₽</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                            <tfoot class="table-light">
+                                                <tr>
+                                                    <td colspan="3" class="text-end"><strong>Итого без скидки:</strong></td>
+                                                    <td><strong>{{ order.get_total_without_discount|floatformat:2 }} ₽</strong></td>
+                                                </tr>
+                                                {% if order.discount %}
+                                                <tr>
+                                                    <td colspan="3" class="text-end"><strong>Скидка {{ order.discount }}%:</strong></td>
+                                                    <td><strong class="text-success">-{{ order.get_discount_amount|floatformat:2 }} ₽</strong></td>
+                                                </tr>
+                                                {% endif %}
+                                                <tr>
+                                                    <td colspan="3" class="text-end"><strong>Итого к оплате:</strong></td>
+                                                    <td><strong class="text-primary">{{ order.get_total_price|floatformat:2 }} ₽</strong></td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            <i class="bi bi-person"></i>
+                                            Покупатель: {{ order.customer.full_name }}
+                                            {% if order.customer.type %}
+                                            <br><i class="bi bi-tag"></i>
+                                            Тип: {{ order.customer.get_type_display }}
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4">
+                                <i class="bi bi-cart display-6 text-muted"></i>
+                                <p class="mt-2">Нет данных о заказах</p>
+                                <a href="?" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-x-circle"></i> Сбросить фильтры
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function initOrdersComponents() {
+    // Сортировка по клику на заголовки
+    const sortableHeaders = document.querySelectorAll('.sortable-header');
+    
+    sortableHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const sortField = this.getAttribute('data-sort');
+            const currentSort = '{{ sort_by }}';
+            const currentOrder = '{{ order }}';
+            
+            let newOrder = 'asc';
+            if (currentSort === sortField) {
+                newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+            }
+            
+            // Обновляем скрытые поля формы
+            document.querySelector('input[name="sort"]').value = sortField;
+            document.querySelector('input[name="order"]').value = newOrder;
+            
+            // Отправляем форму
+            document.getElementById('order-filter-form').submit();
+        });
+    });
+    
+    // Обработка кнопок просмотра деталей
+    document.querySelectorAll('.view-details-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            if (icon.classList.contains('bi-chevron-down')) {
+                icon.classList.replace('bi-chevron-down', 'bi-chevron-up');
+            } else {
+                icon.classList.replace('bi-chevron-up', 'bi-chevron-down');
+            }
+        });
+    });
+}
+
+// Инициализация при загрузке вкладки
+if (document.getElementById('orders')) {
+    initOrdersComponents();
+}
+</script>

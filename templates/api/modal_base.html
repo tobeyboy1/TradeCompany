@@ -1,0 +1,48 @@
+<!-- Упрощенный modal_base.html -->
+<div>
+    <h3>{{ retail_outlet.name }}</h3>
+    <p>{{ retail_outlet.address }}</p>
+    
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a class="nav-link active" href="#warehouse" data-bs-toggle="tab">Склад</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#supplies" data-bs-toggle="tab">Поставки</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#orders" data-bs-toggle="tab">Заказы</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#employees" data-bs-toggle="tab">Сотрудники</a>
+        </li>
+    </ul>
+    
+    <div class="tab-content mt-3">
+        <div class="tab-pane active" id="warehouse">
+            <h4>Склад (тест)</h4>
+            <p>Всего товаров: {{ warehouse_data|length }}</p>
+            <table class="table">
+                <tr><th>Товар</th><th>Количество</th></tr>
+                {% for item in warehouse_data %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        <div class="tab-pane" id="supplies">
+            <h4>Поставки (тест)</h4>
+            <p>Всего поставок: {{ supplies|length }}</p>
+        </div>
+        <div class="tab-pane" id="orders">
+            <h4>Заказы (тест)</h4>
+            <p>Всего заказов: {{ orders|length }}</p>
+        </div>
+        <div class="tab-pane" id="employees">
+            <h4>Сотрудники (тест)</h4>
+            <p>Всего сотрудников: {{ employees|length }}</p>
+        </div>
+    </div>
+</div>

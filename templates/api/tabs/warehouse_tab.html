@@ -1,0 +1,251 @@
+<div class="p-3">
+    <!-- Фильтры и сортировка -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light py-2">
+                    <h6 class="mb-0"><i class="bi bi-funnel"></i> Фильтр по категории</h6>
+                </div>
+                <div class="card-body py-2">
+                    <select class="form-select form-select-sm" id="category-filter">
+                        <option value="">Все категории</option>
+                        {% for category in categories %}
+                        <option value="{{ category.category_id }}">{{ category.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-light py-2">
+                    <h6 class="mb-0"><i class="bi bi-sort-down"></i> Сортировка</h6>
+                </div>
+                <div class="card-body py-2">
+                    <div class="btn-group w-100" role="group">
+                        <button type="button" class="btn btn-sm btn-outline-secondary sort-btn active" 
+                                data-sort-by="name" data-order="asc">
+                            По названию <i class="bi bi-sort-alpha-down"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary sort-btn" 
+                                data-sort-by="quantity" data-order="desc">
+                            По количеству <i class="bi bi-sort-numeric-down"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица товаров -->
+    <div class="card">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">
+                <i class="bi bi-boxes"></i> Товары на складе
+                <span class="badge bg-primary rounded-pill" id="total-items-count">{{ warehouse_data|length }}</span>
+                <span class="badge bg-success rounded-pill ms-2" id="in-stock-count">
+                    {{ warehouse_data|length|default:0 }}
+                </span>
+                <span class="badge bg-secondary rounded-pill ms-2" id="out-of-stock-count">0</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="warehouse-table">
+                    <thead class="table-light">
+                        <tr>
+                            <th width="30%" class="sortable" data-sort-by="name">
+                                Название продукта
+                                <i class="bi bi-sort-alpha-down sort-icon"></i>
+                            </th>
+                            <th width="20%" class="sortable" data-sort-by="category">
+                                Категория товара
+                            </th>
+                            <th width="15%">SKU</th>
+                            <th width="10%">Ед. изм.</th>
+                            <th width="15%" class="sortable" data-sort-by="quantity">
+                                Количество на складе
+                                <i class="bi bi-sort-numeric-down sort-icon"></i>
+                            </th>
+                            <th width="10%" class="text-center">Статус</th>
+                        </tr>
+                    </thead>
+                    <tbody id="warehouse-items">
+                        {% for item in warehouse_data %}
+                        <tr class="warehouse-item {% if not item.has_stock %}table-secondary out-of-stock{% endif %}" 
+                            data-category-id="{{ item.product.category.category_id }}"
+                            data-quantity="{{ item.quantity }}">
+                            <td>
+                                <strong>{{ item.product.name }}</strong>
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ item.product.category.name }}</span>
+                            </td>
+                            <td>
+                                <code>{{ item.product.sku }}</code>
+                            </td>
+                            <td>{{ item.product.unit }}</td>
+                            <td>
+                                <span class="badge {% if item.has_stock %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ item.quantity }}
+                                </span>
+                            </td>
+                            <td class="text-center">
+                                {% if item.has_stock %}
+                                <i class="bi bi-check-circle-fill text-success" title="В наличии"></i>
+                                {% else %}
+                                <i class="bi bi-x-circle-fill text-secondary" title="Нет в наличии"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <i class="bi bi-inbox display-6 text-muted"></i>
+                                <p class="mt-2">Нет данных о товарах на складе</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer bg-light">
+            <small class="text-muted">
+                <i class="bi bi-info-circle"></i>
+                Товары отсутствующие на складе отображаются серым цветом в конце списка
+            </small>
+        </div>
+    </div>
+</div>
+
+<script>
+function initWarehouseComponents() {
+    // Фильтрация по категории
+    const categoryFilter = document.getElementById('category-filter');
+    const warehouseItems = document.querySelectorAll('.warehouse-item');
+    
+    categoryFilter.addEventListener('change', function() {
+        const selectedCategory = this.value;
+        
+        warehouseItems.forEach(item => {
+            const itemCategory = item.getAttribute('data-category-id');
+            
+            if (!selectedCategory || itemCategory === selectedCategory) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+        
+        updateItemCounts();
+    });
+    
+    // Сортировка
+    const sortButtons = document.querySelectorAll('.sort-btn');
+    const sortableHeaders = document.querySelectorAll('.sortable');
+    
+    sortButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Убираем активный класс у всех кнопок
+            sortButtons.forEach(b => b.classList.remove('active'));
+            // Добавляем активный класс текущей кнопке
+            this.classList.add('active');
+            
+            const sortBy = this.getAttribute('data-sort-by');
+            const order = this.getAttribute('data-order');
+            
+            sortTable(sortBy, order);
+        });
+    });
+    
+    sortableHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const sortBy = this.getAttribute('data-sort-by');
+            const currentBtn = document.querySelector(`.sort-btn[data-sort-by="${sortBy}"]`);
+            
+            if (currentBtn) {
+                // Переключаем порядок сортировки
+                const currentOrder = currentBtn.getAttribute('data-order');
+                const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+                currentBtn.setAttribute('data-order', newOrder);
+                currentBtn.click();
+            }
+        });
+    });
+    
+    function sortTable(sortBy, order) {
+        const rows = Array.from(document.querySelectorAll('.warehouse-item:not([style*="display: none"])'));
+        
+        rows.sort((a, b) => {
+            let aValue, bValue;
+            
+            if (sortBy === 'name') {
+                aValue = a.querySelector('td:first-child strong').textContent.toLowerCase();
+                bValue = b.querySelector('td:first-child strong').textContent.toLowerCase();
+            } else if (sortBy === 'category') {
+                aValue = a.querySelector('.badge.bg-info').textContent.toLowerCase();
+                bValue = b.querySelector('.badge.bg-info').textContent.toLowerCase();
+            } else if (sortBy === 'quantity') {
+                aValue = parseInt(a.getAttribute('data-quantity'));
+                bValue = parseInt(b.getAttribute('data-quantity'));
+            }
+            
+            if (order === 'asc') {
+                return aValue > bValue ? 1 : -1;
+            } else {
+                return aValue < bValue ? 1 : -1;
+            }
+        });
+        
+        // Перемещаем товары с нулевым количеством в конец
+        if (sortBy !== 'quantity') {
+            const inStock = rows.filter(row => parseInt(row.getAttribute('data-quantity')) > 0);
+            const outOfStock = rows.filter(row => parseInt(row.getAttribute('data-quantity')) <= 0);
+            rows = [...inStock, ...outOfStock];
+        }
+        
+        // Обновляем таблицу
+        const tbody = document.getElementById('warehouse-items');
+        tbody.innerHTML = '';
+        rows.forEach(row => tbody.appendChild(row));
+        
+        // Обновляем иконки сортировки
+        updateSortIcons(sortBy, order);
+    }
+    
+    function updateSortIcons(sortBy, order) {
+        document.querySelectorAll('.sort-icon').forEach(icon => {
+            icon.className = 'bi sort-icon';
+        });
+        
+        const activeHeader = document.querySelector(`.sortable[data-sort-by="${sortBy}"]`);
+        if (activeHeader) {
+            const icon = activeHeader.querySelector('.sort-icon');
+            if (icon) {
+                icon.className = `bi sort-icon ${order === 'asc' ? 'bi-sort-alpha-down' : 'bi-sort-alpha-up'}`;
+            }
+        }
+    }
+    
+    function updateItemCounts() {
+        const visibleItems = document.querySelectorAll('.warehouse-item:not([style*="display: none"])');
+        const inStockCount = Array.from(visibleItems).filter(item => 
+            parseInt(item.getAttribute('data-quantity')) > 0
+        ).length;
+        const outOfStockCount = visibleItems.length - inStockCount;
+        
+        document.getElementById('total-items-count').textContent = visibleItems.length;
+        document.getElementById('in-stock-count').textContent = inStockCount;
+        document.getElementById('out-of-stock-count').textContent = outOfStockCount;
+    }
+    
+    // Инициализация счетчиков
+    updateItemCounts();
+    
+    // Изначальная сортировка по количеству (по убыванию)
+    setTimeout(() => {
+        sortTable('quantity', 'desc');
+    }, 100);
+}
+</script>

@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Торговые точки</h1>
+    
+    <!-- Поиск -->
+    <form method="get" class="mb-4">
+        <input type="text" class="form-control" name="search" 
+               placeholder="Поиск..." value="{{ request.GET.search|default:'' }}">
+        <button class="btn btn-primary mt-2" type="submit">Найти</button>
+    </form>
+    
+    <!-- Список торговых точек -->
+    <div class="row">
+        {% for outlet in retail_outlets %}
+        <div class="col-md-4 mb-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5>{{ outlet.name }}</h5>
+                    <p class="text-muted">{{ outlet.address }}</p>
+                    <!-- ПРОСТАЯ КНОПКА БЕЗ AJAX -->
+                    <a href="{% url 'api:modal_window' outlet.retail_outlet_id %}" 
+                       class="btn btn-primary" 
+                       data-bs-toggle="modal" 
+                       data-bs-target="#outletModal">
+                        Открыть
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="alert alert-info">Нет торговых точек</div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Модальное окно -->
+<div class="modal fade" id="outletModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-shop"></i> 
+                    <span id="modal-outlet-name">Торговая точка</span>  <!-- ← ДОЛЖЕН БЫТЬ ЭТОТ ЭЛЕМЕНТ -->
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modal-content">
+                <!-- Контент будет загружен через AJAX -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Загрузка...</span>
+                    </div>
+                    <p class="mt-3">Загрузка данных...</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Закрыть
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ПРОСТОЙ обработчик модального окна
+document.addEventListener('DOMContentLoaded', function() {
+    const outletModal = document.getElementById('outletModal');
+    
+    if (outletModal) {
+        outletModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const url = button.getAttribute('href');
+            console.log('Opening modal with URL:', url);
+            
+            // Загружаем данные
+            fetch(url)
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.text();
+                })
+                .then(html => {
+                    console.log('HTML received, length:', html.length);
+                    document.getElementById('modal-content').innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error loading modal:', error);
+                    document.getElementById('modal-content').innerHTML = `
+                        <div class="alert alert-danger">
+                            Ошибка загрузки: ${error.message}
+                        </div>
+                    `;
+                });
+        });
+    }
+});
+</script>
+{% endblock %}
