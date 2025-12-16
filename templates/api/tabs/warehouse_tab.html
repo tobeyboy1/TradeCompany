@@ -1,53 +1,10 @@
 <!-- templates/api/tabs/warehouse_tab.html -->
 <div class="p-3">
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0">Статистика склада</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-6 text-center">
-                            <h3>{{ warehouse_data|length }}</h3>
-                            <small class="text-muted">Всего товаров</small>
-                        </div>
-                        <div class="col-6 text-center">
-                            <h3 class="text-success">
-                                {{ warehouse_data|length|add:"-warehouse_data|length" }}
-                            </h3>
-                            <small class="text-muted">В наличии</small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0">Сортировка</h6>
-                </div>
-                <div class="card-body">
-                    <div class="btn-group w-100">
-                        <button class="btn btn-sm btn-outline-primary sort-btn active" 
-                                data-sort="quantity" data-order="desc">
-                            По количеству ↓
-                        </button>
-                        <button class="btn btn-sm btn-outline-primary sort-btn" 
-                                data-sort="name" data-order="asc">
-                            По названию А-Я
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
     <div class="card">
         <div class="card-header bg-light">
             <h5 class="mb-0">
                 <i class="bi bi-boxes"></i> Товары на складе
-                <span class="badge bg-primary">{{ warehouse_data|length }}</span>
+                <!--<span class="badge bg-primary">{{ warehouse_data|length }}</span>-->
             </h5>
         </div>
         <div class="card-body p-0">
@@ -102,21 +59,6 @@
                         {% endfor %}
                     </tbody>
                 </table>
-            </div>
-        </div>
-        <div class="card-footer bg-light">
-            <div class="row">
-                <div class="col">
-                    <small class="text-muted">
-                        <i class="bi bi-info-circle"></i>
-                        Расчет: (сумма всех поставок) - (сумма всех заказов)
-                    </small>
-                </div>
-                <div class="col text-end">
-                    <small class="text-muted">
-                        Всего товаров: <strong>{{ warehouse_data|length }}</strong>
-                    </small>
-                </div>
             </div>
         </div>
     </div>

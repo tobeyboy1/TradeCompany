@@ -1,6 +1,6 @@
 <!-- templates/api/tabs/orders_tab.html -->
 <div class="p-3">
-    <!-- Фильтры (упрощённые без статусов) -->
+    <!-- Фильтры (упрощённые без статусов)
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -66,7 +66,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- Таблица заказов -->
     <div class="card">
@@ -107,10 +107,10 @@
                                     <i class="bi bi-arrow-down-up text-muted"></i>
                                 {% endif %}
                             </th>
-                            <th width="20%">Покупатель</th>
+                            <th width="15%">Покупатель</th>
                             <th width="10%">Скидка</th>
                             <th width="25%">Товары</th>
-                            <th width="15%" class="sortable-header {% if sort_by == 'total_price' %}sorted{% endif %}" 
+                            <th width="20%" class="sortable-header {% if sort_by == 'total_price' %}sorted{% endif %}" 
                                 data-sort="total_price">
                                 Общая сумма
                                 {% if sort_by == 'total_price' %}

@@ -65,7 +65,7 @@ class ModalWindowView(View):
         
         # 5. Статистика для отображения
         stats = {
-            'total_products': len(warehouse_data),
+            'total_products': sum(item['quantity'] for item in warehouse_data),
             'products_in_stock': len([item for item in warehouse_data if item['quantity'] > 0]),
             'products_out_of_stock': len([item for item in warehouse_data if item['quantity'] <= 0]),
             'total_supplies': supplies.count(),
