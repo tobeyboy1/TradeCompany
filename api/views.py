@@ -87,10 +87,6 @@ class ModalWindowView(View):
             
             # Статистика
             'stats': stats,
-            
-            # Для сортировки и фильтрации (можно упростить без статусов)
-            'sort_by': request.GET.get('sort', 'quantity_desc'),
-            'order': request.GET.get('order', 'desc'),
         }
         
         return render(request, self.template_name, context)

@@ -10,9 +10,7 @@
     <table class="table table-hover">
         <thead>
             <tr>
-                <th class="sortable" data-sort="full_name">
-                    ФИО {% include 'api/includes/sorting_icon.html' %}
-                </th>
+                <th>ФИО</th>
                 <th>Должность</th>
                 <th>Телефон</th>
                 <th>Email</th>
@@ -35,7 +33,7 @@
     </table>
 </div>
 
-<script>
+<!-- <script>
 // Простая фильтрация по должности
 document.getElementById('positionFilter').addEventListener('input', function() {
     const filter = this.value.toLowerCase();
@@ -49,4 +47,4 @@ document.getElementById('positionFilter').addEventListener('input', function() {
 document.querySelector('.sortable').addEventListener('click', function() {
     // Реализация сортировки
 });
-</script>
+</script> -->

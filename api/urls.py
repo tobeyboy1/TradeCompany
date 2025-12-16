@@ -12,20 +12,4 @@ urlpatterns = [
          views.ModalWindowView.as_view(), 
          name='modal_window'),
     
-    # Отдельные вкладки модального окна (для AJAX загрузки)
-    path('modal/<int:retail_outlet_id>/warehouse/', 
-         views.ModalWindowView.as_view(), 
-         name='modal_warehouse'),
-    
-    path('modal/<int:retail_outlet_id>/supplies/', 
-         views.ModalWindowView.as_view(), 
-         name='modal_supplies'),
-    
-    path('modal/<int:retail_outlet_id>/orders/', 
-         views.ModalWindowView.as_view(), 
-         name='modal_orders'),
-    
-    path('modal/<int:retail_outlet_id>/employees/', 
-         views.ModalWindowView.as_view(), 
-         name='modal_employees'),
 ]
