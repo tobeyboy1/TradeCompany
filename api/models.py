@@ -1,6 +1,6 @@
 # api/models.py
 from django.db import models
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
 from django.db.models import Sum, F
 
@@ -34,7 +34,7 @@ class Product(models.Model):
         return f"{self.name} ({self.sku})"
     
     def get_warehouse_quantity(self, retail_outlet_id):
-        """Расчет количества на складе для конкретной торговой точки - БЕЗ СТАТУСОВ"""
+
         # Все поставки независимо от статуса
         total_supplied = PurchaseOrderItem.objects.filter(
             product=self,
@@ -49,9 +49,6 @@ class Product(models.Model):
         
         return total_supplied - total_sold
     
-    def get_warehouse_quantity_by_outlet(self, retail_outlet):
-        """Альтернативный метод с объектом вместо ID"""
-        return self.get_warehouse_quantity(retail_outlet.retail_outlet_id)
 
 class RetailOutlet(models.Model):
     retail_outlet_id = models.AutoField(primary_key=True)
@@ -60,22 +57,6 @@ class RetailOutlet(models.Model):
     
     def __str__(self):
         return self.name
-    
-    def get_warehouse_summary(self):
-        """Сводка по складу для этой торговой точки"""
-        products = Product.objects.all()
-        summary = []
-        total_value = 0
-        
-        for product in products:
-            quantity = product.get_warehouse_quantity(self.retail_outlet_id)
-            if quantity != 0:  # Показываем только товары с ненулевым остатком
-                summary.append({
-                    'product': product,
-                    'quantity': quantity
-                })
-        
-        return summary
 
 class Customer(models.Model):
     CUSTOMER_TYPES = [
@@ -111,7 +92,6 @@ class PurchaseOrder(models.Model):
     retail_outlet = models.ForeignKey(RetailOutlet, on_delete=models.CASCADE, verbose_name="Торговая точка")
     order_date = models.DateField(verbose_name="Дата заказа")
     expected_delivery_date = models.DateField(verbose_name="Ожидаемая дата поставки")
-    actual_delivery_date = models.DateField(verbose_name="Фактическая дата поставки", null=True, blank=True)
     
     def __str__(self):
         return f"Поставка #{self.order_id}"
@@ -123,15 +103,6 @@ class PurchaseOrder(models.Model):
         )['total'] or Decimal('0')
         return total
     
-    def get_items_count(self):
-        """Количество позиций в поставке"""
-        return self.purchaseorderitem_set.count()
-    
-    def get_total_quantity(self):
-        """Общее количество товаров в поставке"""
-        return self.purchaseorderitem_set.aggregate(
-            total=Sum('quantity')
-        )['total'] or 0
 
 class PurchaseOrderItem(models.Model):
     purchase_order_items_id = models.AutoField(primary_key=True)
@@ -153,7 +124,7 @@ class SalesOrder(models.Model):
     retail_outlet = models.ForeignKey(RetailOutlet, on_delete=models.CASCADE, verbose_name="Торговая точка")
     employee = models.ForeignKey(Employee, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Сотрудник")
     order_date = models.DateField(verbose_name="Дата заказа")
-    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name="Персональная скидка (%)")
+    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0, validators=[MinValueValidator(0), MaxValueValidator(100)], verbose_name="Персональная скидка (%)")
     
     def __str__(self):
         return f"Заказ #{self.order_id}"
@@ -174,16 +145,6 @@ class SalesOrder(models.Model):
         total_without = self.get_total_without_discount()
         return total_without * (self.discount / 100) if self.discount else Decimal('0')
     
-    def get_items_count(self):
-        """Количество позиций в заказе"""
-        return self.salesorderitem_set.count()
-    
-    def get_total_quantity(self):
-        """Общее количество товаров в заказе"""
-        return self.salesorderitem_set.aggregate(
-            total=Sum('quantity')
-        )['total'] or 0
-
 class SalesOrderItem(models.Model):
     order = models.ForeignKey(SalesOrder, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name="Товар")
